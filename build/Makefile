@@ -181,7 +181,7 @@ kernel_build:
 	cp $(KERNELTARGET) $(TFTPPATH)/$(KTFILE) && \
 	cp $(KERNELTARGET) $(IMAGEPATH)/$(KTFILE) && \
 	rm -rf $(KERNELTARGET).lzma && \
-	$(TOPDIR)/util/lzma/bin/lzma --best --keep $(KERNELTARGET)
+	lzma --best --keep $(KERNELTARGET)
 
 
 #build bootloader
