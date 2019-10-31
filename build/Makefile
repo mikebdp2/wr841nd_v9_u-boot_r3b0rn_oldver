@@ -4,7 +4,13 @@
 export DEV_NAME=wr841nv9_en
 
 export TOPDIR=$(PWD)/..
-export PRODUCT_CONFIG_DIR=$(TOPDIR)/build/products_config/$(DEV_NAME)/
+export PRODUCT_CONFIG_DIR=$(TOPDIR)/build/products_config/$(DEV_NAME)
+export BUILD_DIR=$(TOPDIR)/build
+export STAGING_DIR=$(BUILD_DIR)/gcc-4.3.3/build_mips/staging_dir
+export MACMODELPIN_DIR=$(TOPDIR)/macmodelpin
+
+export UBOOTDIR=$(TOPDIR)/$(BOARD_TYPE)/boot/u-boot
+export TUBOOT_DIR=$(TOPDIR)/tuboot
 
 include $(PRODUCT_CONFIG_DIR)/basic.config
 
@@ -52,7 +58,6 @@ export UBOOT_FILE=u-boot.bin
 ###
 export MAKEARCH=$(MAKE) ARCH=$(KERNELARCH) CROSS_COMPILE=$(TOOLPREFIX)
 export TOOLPATH=$(TOPDIR)/build/$(TOOLCHAIN)/$(TOOLARCH)/
-export UBOOTDIR=$(TOPDIR)/$(BOARD_TYPE)/boot/u-boot
 ###
 
 # Save PATH for later use for compiling host-only tools etc.
@@ -61,29 +66,79 @@ export ORIGINAL_PATH:=$(PATH)
 # as well as other tools we expect to find.
 export PATH:=$(TOOLPATH)/bin:${PATH}
 
-all: toolchain_prep uboot_clean uboot
+### all: toolchain_tplink uboot_clean uboot
+all: uboot_clean tuboot_mmp
 
 ######## prepare toolchain ########
-toolchain_prep:
+toolchain_tplink:
 	@echo Uncompressing toolchain, please wait for a few minutes ...
 	cd $(TOPDIR)/toolchain/ && \
 	rm -rf ./gcc-4.3.3/ && \
 	tar -jxf gcc-4.3.3.tar.bz2 && \
-	rm -rf $(TOPDIR)/build/gcc-4.3.3 && \
-	mv ./gcc-4.3.3/ $(TOPDIR)/build/
+	rm -rf $(BUILD_DIR)/gcc-4.3.3/ && \
+	mv ./gcc-4.3.3/ $(BUILD_DIR)
 
 ######## clean bootloader ########
 uboot_clean:
 	echo Making uboot clean
 	cd $(UBOOTDIR) && $(MAKEARCH) distclean
+	rm -rf $(TUBOOT_DIR) && mkdir $(TUBOOT_DIR)
 
 ######## build bootloader ########
 uboot:
 	@echo Making uboot at `date`
 	cd $(UBOOTDIR) && $(MAKEARCH) mrproper
 	cd $(UBOOTDIR) && $(MAKEARCH) $(BOARD_TYPE)_config
-	@echo ========= build dir: $(TOPDIR)/build ============
-	cd $(UBOOTDIR) && $(MAKEARCH) all BUILD_DIR=$(TOPDIR)/build
+	@echo ========= build dir: $(BUILD_DIR) ============
+	cd $(UBOOTDIR) && $(MAKEARCH) all BUILD_DIR=$(BUILD_DIR)
 	@echo End Making uboot at `date`
+
+######## expand bootloader ########
+tuboot: uboot
+	@echo
+	@echo ========= $(TUBOOT_DIR)/tuboot_128kb.bin ============
+	rm -rf $(TUBOOT_DIR) && mkdir $(TUBOOT_DIR)
+	cp $(UBOOTDIR)/tuboot.bin $(TUBOOT_DIR)/tuboot.bin
+	tr '\0' '\377' < /dev/zero | dd bs=1024 count=128 of=$(TUBOOT_DIR)/tuboot_128kb.bin
+	dd if=$(TUBOOT_DIR)/tuboot.bin of=$(TUBOOT_DIR)/tuboot_128kb.bin conv=notrunc
+	ls -al $(TUBOOT_DIR)/tuboot_128kb.bin
+
+######## build macmodelpin ########
+macmodelpin:
+	gcc -o $(MACMODELPIN_DIR)/macmodelpin $(MACMODELPIN_DIR)/macmodelpin.c
+#=== USAGE ===
+#    to print:
+#        ./macmodelpin dump.bin
+#    to set:
+#        ./macmodelpin dump.bin 0xMAC 0xMODEL PIN
+#        ./macmodelpin dump.bin 0x16A2594B37DF 0x0841000900000001 12345678
+
+######## setup bootloader ########
+tuboot_mmp: tuboot macmodelpin
+	cp $(TUBOOT_DIR)/tuboot_128kb.bin $(TUBOOT_DIR)/tuboot_128kb_mmp1.bin
+	cp $(TUBOOT_DIR)/tuboot_128kb.bin $(TUBOOT_DIR)/tuboot_128kb_mmp2.bin
+	cp $(TUBOOT_DIR)/tuboot_128kb.bin $(TUBOOT_DIR)/tuboot_128kb_mmp3.bin
+	cp $(TUBOOT_DIR)/tuboot_128kb.bin $(TUBOOT_DIR)/tuboot_128kb_mmp4.bin
+	cp $(TUBOOT_DIR)/tuboot_128kb.bin $(TUBOOT_DIR)/tuboot_128kb_mmp5.bin
+	### 1st config
+	$(MACMODELPIN_DIR)/macmodelpin $(TUBOOT_DIR)/tuboot_128kb_mmp1.bin \
+			0x16A2594B37DF 0x0841000900000001 12345678
+	### 2nd config
+	$(MACMODELPIN_DIR)/macmodelpin $(TUBOOT_DIR)/tuboot_128kb_mmp2.bin \
+			0x16A2594B37DF 0x0841000900000001 12345678
+	### 3rd config
+	$(MACMODELPIN_DIR)/macmodelpin $(TUBOOT_DIR)/tuboot_128kb_mmp3.bin \
+			0x16A2594B37DF 0x0841000900000001 12345678
+	### 4th config
+	$(MACMODELPIN_DIR)/macmodelpin $(TUBOOT_DIR)/tuboot_128kb_mmp4.bin \
+			0x16A2594B37DF 0x0841000900000001 12345678
+	### 5th config
+	$(MACMODELPIN_DIR)/macmodelpin $(TUBOOT_DIR)/tuboot_128kb_mmp5.bin \
+			0x16A2594B37DF 0x0841000900000001 12345678
+	### sha256sum
+	sha256sum $(TUBOOT_DIR)/* > $(TUBOOT_DIR)/sha256sum.txt
+	@echo
+	cat $(TUBOOT_DIR)/sha256sum.txt
+	@echo
 
 ###
