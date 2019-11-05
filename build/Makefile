@@ -67,7 +67,13 @@ export ORIGINAL_PATH:=$(PATH)
 export PATH:=$(TOOLPATH)/bin:${PATH}
 
 ### all: toolchain_tplink uboot_clean uboot
-all: uboot_clean tuboot_mmp
+all: uboot_clean lzma tuboot_mmp
+
+######## build a good lzma ########
+lzma:
+	cd $(TOPDIR)/util/lzma && \
+	rm -rf ./lzma-4.32.7/ && tar -zxvf ./lzma-4.32.7.tar.gz && \
+	cd ./lzma-4.32.7/ && ./configure && make
 
 ######## prepare toolchain ########
 toolchain_tplink:
