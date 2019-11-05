@@ -1,27 +1,25 @@
-TP-LINK GPL **U-Boot** code readme
+		TP-LINK GPL **U-Boot** code + R3B0RN project readme
 
-1. This package contains **only** U-Boot GPL code used by TP-Link TL-WR841ND v9 Router
-and TP-Link's ancient 32-bit uClibc gcc-4.3.3 toolchain currently needed to build it.
-Changes are required for building with another toolchain, see mikebdp2's new repository:
-https://github.com/mikebdp2/wr841nd_v9_u-boot_r3b0rn
+1. This package still has **only** U-Boot GPL code used by TP-Link TL-WR841ND v9 Router.
+TP-Link's ancient 32-bit uClibc gcc-4.3.3 toolchain has been initially required to build,
+and one of the goals of R3B0RN project was to slightly modify these sources - just enough
+to make them buildable with your own much better opensource toolchain! Search for R3B0RN
+
+	find . -type f -print0 | xargs -0 grep -n "R3B0RN"
+
+and look through a commit history for more information. Maybe later it could be upgraded
+to a newer U-Boot version, however it's a low priority. Also, I've copied a macmodelpin
+tool from https://github.com/mikebdp2/macmodelpin repository, for setting these values
+after the end of U-Boot's compiled binary which has been expanded to 128KB with 0xff .
 
 2. U-Boot build OK on Artix Linux ( https://artixlinux.org/ great fresh no-SystemD Arch )
 with multilib ( https://wiki.archlinux.org/index.php/Official_repositories#multilib ) and
 32-bit toolchain needs some 32-bit packages: lib32-glibc, lib32-zlib and lib32-gcc-libs.
+Your own toolchain perhaps will be 64-bit so multilib/32-bit packages wouldn't be needed.
 
 3. All the other stuff from this package has been removed for simplicity: if you need it,
 please get a complete package from https://github.com/mikebdp2/wr841nv9_en_gpl
-
-tar -zxvf ./wr841nv9_en_gpl.tar.gz
-cd ./wr841nv9_en_gpl/ && rm -rf ./build/scripts/
-rm -rf ./ap143/apps/ && rm -rf ./ap143/linux/ && rm -rf ./apps/
-rm -rf ./filesystem/ && rm -rf ./kernel_modules/ && rm -rf ./pb92/
-rm -rf ./toolchain_src/ && rm -rf ./util/ && rm -rf ./web_server/
-mkdir ./util/ && mkdir ./util/lzma/ && mkdir ./util/lzma/bin/
-cd ./util/lzma/bin/ && ln -s ./../lzma-4.32.7/src/lzma/lzma ./lzma
-cd ./../ && wget https://tukaani.org/lzma/lzma-4.32.7.tar.gz
-cd ./../../ && nano ./build/Makefile # add "lzma" target
-nano ./readme.txt # add this info
+https://github.com/mikebdp2/wr841n_v9_u-boot has more info about what exactly is removed.
 
 BOARD_TYPE definitions
 1. ap143: TL-WR841N/ND 9.0
@@ -30,46 +28,67 @@ DEV_NAME definitions
 1. wr841nv9_en: TL-WR841N/ND 9.0
 
 Build Instructions
-1. All build targets are in ./wr841nv9_en_gpl/build/Makefile ,
+
+1. All build targets are in ./wr841nd_v9_u-boot_r3b0rn/build/Makefile ,
 you should enter this directory to build components:
 
-        cd ./path_to/wr841nv9_en_gpl/build/Makefile
+        cd ./path_to/wr841nd_v9_u-boot_r3b0rn/build/
 
 2. Pre-built 32-bit uClibc gcc-4.3.3 toolchain is available in this package,
 however its' source code is available only at toolchain_src of complete package.
-Prepare this toolchain:
+If you would like to use it, prepare this toolchain_tplink :
 
-        make DEV_NAME=wr841nv9_en toolchain_prep
+        make TOOLPREFIX=mips-linux-uclibc- FLASH_SIZE=4 toolchain_tplink
 
-3. Build u-boot bootloader:
+But you can get or build your own, much better, opensource toolchain, and install it:
 
-        make DEV_NAME=wr841nv9_en uboot
+	cd ./path_to/wr841nd_v9_u-boot_r3b0rn/build/
+	rm -rf ./gcc-mips/ && mkdir ./gcc-mips/ && mkdir ./gcc-mips/staging_dir/
+	cp -R ./path_to/libreCMC/staging_dir/toolchain-mips_24kc_gcc-5.5.0_musl-1.1.16/ \
+	                                           ./gcc-mips/staging_dir/usr/
+	cp -R ./path_to/libreCMC/staging_dir/host/ ./gcc-mips/staging_dir/host/
 
-Required U-Boot file will be called " tuboot.bin " and located at
+Just remember about a TOOLPREFIX : if a gcc of your toolchain is called
 
-        ls -al ./../ap143/boot/u-boot/tuboot.bin
+	./gcc-mips/staging_dir/usr/bin/mips-openwrt-linux-musl-gcc
 
-4. Generate a 128 KB file of 0xff :
+then a TOOLPREFIX=mips-openwrt-linux-musl- , in all the subsequent "make" commands.
 
-        tr '\0' '\377' < /dev/zero | dd bs=1024 count=128 of=./128kb.bin
+3. Insert your values to tuboot_mmp of ./path_to/wr841nd_v9_u-boot_r3b0rn/build/Makefile
 
-Then overwrite its' beginning with your " tuboot.bin " :
+	nano ./path_to/wr841nd_v9_u-boot_r3b0rn/build/Makefile
 
-        dd if=./../ap143/boot/u-boot/tuboot.bin of=./128kb.bin conv=notrunc
+4. Build u-boot bootloader with a correct TOOLPREFIX and a FLASH_SIZE in MegaBytes :
 
-Now, using macmodelpin from https://github.com/mikebdp2/macmodelpin , print a macmodelpin
-of your router's full chip dump and set the same or changed values near the end of 128KB:
+        make TOOLPREFIX=mips-openwrt-linux-musl- FLASH_SIZE=4 all
 
-        git clone https://github.com/mikebdp2/macmodelpin
-        cd ./macmodelpin/
-        gcc -o macmodelpin macmodelpin.c
-        ./macmodelpin ./path_to/dump.bin
-        ./macmodelpin ./../128kb.bin 0xMAC 0xMODEL PIN
-        ./macmodelpin ./../128kb.bin 0x16A2594B37DF 0x084100090000001 12345678
+Required U-Boot files will be called " tuboot_128kb_mmp*.bin " and located at
+
+        ls -al ./../tuboot/
 
 5. Overwrite the first 128kb of your router's full chip dump, before flashing to a chip:
 
-        dd if=./../128kb.bin of=./path_to/dump.bin conv=notrunc
+        dd if=./../tuboot/tuboot_128kb_mmp1.bin of=./path_to/dump.bin conv=notrunc
         sudo ./path_to/flashrom -p ch341a_spi -c "MX25L3206E/MX25L3208E" -w ./dump.bin -V
 
-Happy Hacking!
+P.S. Remember the following memory map of your flash chip:
+
+	1) First 128KB: U-Boot binary expanded with 0xff to 0x20000 and with your values:
+
+	        MAC/MODEL/PIN (0x1FC00,6bytes/0x1FD00,8bytes/0x1FE00,8bytes)
+
+	   If your flash chip size is custom for a particular router, you may need to
+	   introduce a new router model value both at MODEL 8bytes/0x1FE00 and firmware :
+
+	        4MB - 0x0841000900000001 or  ||  TPLINK_HWID := 0x08410009
+                      0x0841040900000001     ||  TPLINK_HWID := 0x08410409
+	        8MB - 0x0841080900000001     ||  TPLINK_HWID := 0x08410809
+	       16MB - 0x0841100900000001     ||  TPLINK_HWID := 0x08411009
+
+	   See how the other models in your firmware sources are defined, add a new one.
+
+	2) Middle space: firmware built for this chip size and this router's model
+
+	3) Last 128KB: Atheros Radio Test partition (ART)
+
+			Happy Hacking!
