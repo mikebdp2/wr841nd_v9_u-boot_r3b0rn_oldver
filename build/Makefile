@@ -6,7 +6,8 @@ export DEV_NAME=wr841nv9_en
 export TOPDIR=$(PWD)/..
 export PRODUCT_CONFIG_DIR=$(TOPDIR)/build/products_config/$(DEV_NAME)
 export BUILD_DIR=$(TOPDIR)/build
-export STAGING_DIR=$(BUILD_DIR)/gcc-4.3.3/build_mips/staging_dir
+### R3B0RN gcc-4.3.3/build_mips => gcc-mips
+export STAGING_DIR=$(BUILD_DIR)/gcc-mips/staging_dir
 export MACMODELPIN_DIR=$(TOPDIR)/macmodelpin
 
 export UBOOTDIR=$(TOPDIR)/$(BOARD_TYPE)/boot/u-boot
@@ -22,8 +23,16 @@ ifndef TOOLCHAIN
 $(error "Must specify TOOLCHAIN value")
 endif
 
+ifndef TOOLPREFIX
+$(error "Must specify TOOLPREFIX value. For example, make all TOOLPREFIX=mips-linux-uclibc- FLASH_SIZE=4")
+endif
+
 ifndef TOOLARCH
 $(error "Must specify TOOLARCH value")
+endif
+
+ifndef FLASH_SIZE
+$(error "Must specify FLASH_SIZE value. For example, make all TOOLPREFIX=mips-linux-uclibc- FLASH_SIZE=4")
 endif
 
 ifndef  BUILD_OPTIMIZED
@@ -81,8 +90,10 @@ toolchain_tplink:
 	cd $(TOPDIR)/toolchain/ && \
 	rm -rf ./gcc-4.3.3/ && \
 	tar -jxf gcc-4.3.3.tar.bz2 && \
-	rm -rf $(BUILD_DIR)/gcc-4.3.3/ && \
-	mv ./gcc-4.3.3/ $(BUILD_DIR)
+	rm -rf $(BUILD_DIR)/gcc-mips/ && \
+	mkdir $(BUILD_DIR)/gcc-mips/ && \
+	mv ./gcc-4.3.3/build_mips/staging_dir/ $(BUILD_DIR)/gcc-mips/staging_dir/ && \
+	rm -rf ./gcc-4.3.3/
 
 ######## clean bootloader ########
 uboot_clean:
