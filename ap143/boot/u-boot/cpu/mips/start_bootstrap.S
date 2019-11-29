@@ -619,6 +619,7 @@ _poll_for_RTC_ON:
 	lw	a1,	0x0044(a0)		// RTC_SYNC_STATUS_ADDRESS
 	and	a1,	a2,	a1
 	bne	a1,	a2,	_poll_for_RTC_ON
+	nop					// This nop fixes "Warning: macro instruction expanded into multiple instructions in a branch delay slot"
 
 
 _CHANGE_TAPS:
@@ -719,6 +720,7 @@ _bist_done_poll:
 	srl	t3,	t3,	0x1		// No. of runs in the config register.
 
 	bne	t3,	t2,	_iterate_tap
+	nop					// This nop fixes "Warning: macro instruction expanded into multiple instructions in a branch delay slot"
 
 pass_tap:
 	li	t0,	0xbd001f00
@@ -758,6 +760,7 @@ _iterate_tap:
 	sw	t1,	0x0(t0)
 	nop
 	b	_CHANGE_TAPS
+	nop					// This nop fixes "Warning: macro instruction expanded into multiple instructions in a branch delay slot"
 
 _STOP_TEST:
 	li	t0,	0xbd001f00
@@ -766,6 +769,7 @@ _STOP_TEST:
 	nop
 	li	t3,	0x8			// Default Tap to be used
 	b	_load_tap_into_reg
+	nop					// This nop fixes "Warning: macro instruction expanded into multiple instructions in a branch delay slot"
 
 _load_center_tap:
 	li	t0,	0xbd001f10
