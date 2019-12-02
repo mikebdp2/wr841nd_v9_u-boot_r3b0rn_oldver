@@ -80,9 +80,11 @@ all: uboot_clean lzma tuboot_mmp
 
 ######## build a good lzma ########
 lzma:
-	cd $(TOPDIR)/util/lzma && \
-	rm -rf ./lzma-4.32.7/ && tar -zxvf ./lzma-4.32.7.tar.gz && \
-	cd ./lzma-4.32.7/ && ./configure && make
+	if [ ! -f "$(TOPDIR)/util/lzma/lzma-4.32.7/src/lzma/lzma" ] ; then \
+		cd $(TOPDIR)/util/lzma && \
+		rm -rf ./lzma-4.32.7/ && tar -zxvf ./lzma-4.32.7.tar.gz && \
+		cd ./lzma-4.32.7/ && ./configure && make ; \
+	fi
 
 ######## prepare toolchain ########
 toolchain_tplink:
